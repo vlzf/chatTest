@@ -39,6 +39,7 @@ router.get('/', ifLogined, function(req,res){
                 userId: e.userId,
                 nickName: e.nickName,
                 sex: e.sex,
+                userPhoto: e.userPhoto,
             })
         });
         return a2;
@@ -57,12 +58,12 @@ router.get('/', ifLogined, function(req,res){
                 if(result.length){
                     res.json({
                         result: 'success',
-                        messages: dealArray(result),
+                        message: dealArray(result),
                     })
                 }else{
                     res.json({
                         result: 'failed',
-                        messages: 'Not Found'
+                        message: 'Not Found'
                     })
                 }
             }
@@ -75,7 +76,7 @@ router.get('/', ifLogined, function(req,res){
     }else{
         res.json({
             result: 'failed',
-            messages: '未输入联系人',
+            message: '未输入联系人',
         });
     }
 })

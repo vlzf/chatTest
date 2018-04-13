@@ -77,7 +77,7 @@ router.post('/',urlencodeParser,function(req,res){
                         account: account,
                         password: password,
                         nickname: '',          //字符串，用户的昵称
-                        age : '',                 //整型，用户的年龄
+                        age : null,                 //整型，用户的年龄
                         sex: 1,              // 性别
                         address : '',             //字符串，表示地址
                         introduction : '',        //字符串，用户的自我介绍
@@ -88,7 +88,12 @@ router.post('/',urlencodeParser,function(req,res){
                     },
                     next(result){
                         console.log(result);
-                        res.json({result:'success',account: result.ops[0].account});    // 成功，则返回 account
+                        res.json({
+                            result:'success',
+                            message: {
+                                account: result.ops[0].account
+                            }
+                        });    // 成功，则返回 account
                     }
                 },
                 {
@@ -114,7 +119,10 @@ router.post('/',urlencodeParser,function(req,res){
     if(account&&password){   // 判断是否符合 注册要求
         chain();
     }else{
-        res.json({result:'failed',reason:'帐号或密码未输入'});
+        res.json({
+            result:'failed',
+            message:'帐号或密码未输入'
+        });
     }
 });
 

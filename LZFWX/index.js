@@ -1,5 +1,5 @@
 module.exports = function(app){
-    app.use('/LZFWX',require('./home'));
+    app.use('/LZFWX/home',require('./home'));
     app.use('/LZFWX/register',require('./register'));
     app.use('/LZFWX/login',require('./login'));
     app.use('/LZFWX/logout',require('./logout'));

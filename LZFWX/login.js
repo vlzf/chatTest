@@ -40,11 +40,17 @@ router.get('/',notLogined,function(req,res){
                                 userId: r[0].userId,
                                 password: r[0].password
                             }
+                            res.json({
+                                result: 'success',
+                                message: {
+                                    userId: r[0].userId
+                                }
+                            })
                             return;
                         }else{             // 找不到
                             res.json({
                                 result: 'failed',
-                                reason: '账号或密码错误'
+                                message: '账号或密码错误'
                             });
                             return []; // 清空操作链
                         }
@@ -78,7 +84,10 @@ router.get('/',notLogined,function(req,res){
     if(account && password){
         login();
     }else{
-        res.json({result:'failed',reason:'账号或密码未填写'});
+        res.json({
+            result:'failed',
+            message:'账号或密码未填写'
+        });
     }
 });
 

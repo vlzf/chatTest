@@ -54,7 +54,10 @@ router.post('/',ifLogined,urlencodeParser,function(req,res){
         },
         callback: (result)=>{
             console.log(result);
-            res.json({result:'success'});
+            res.json({
+                result:'success',
+                message: '成功'
+            });
         }
     })
 

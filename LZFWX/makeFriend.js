@@ -1,4 +1,4 @@
-import { json } from './C:/Users/LZF/AppData/Local/Microsoft/TypeScript/2.6/node_modules/@types/express';
+
 
 var ifLogined = require('../lib/check-account').ifLogined;
 var urlencoded = require('body-parser').urlencoded;
@@ -60,7 +60,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                                 if(sr.friends[index] === rr.userId) {
                                     res.json({
                                         result: 'failed',
-                                        messages: '已存在',
+                                        message: '已存在',
                                     });
                                     return [];   // 清空操作链
                                 }
@@ -79,7 +79,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                         }else{
                             res.json({
                                 result: 'failed',
-                                messages: '无'
+                                message: '无'
                             });
                             return [];   // 清空操作链
                         }
@@ -99,7 +99,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                         }else{
                             res.json({
                                 result: 'failed',
-                                messages: '失败'
+                                message: '失败'
                             })
                             return [];
                         }
@@ -123,7 +123,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                     next(r,a,i){
                         res.json({
                             result: 'success',
-                            messages: '成功'
+                            message: '成功'
                         });
                     }
                 },
@@ -145,12 +145,17 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
         })
     }
 
-    if(receiverId){
+    if(receiverId===req.session.user.userId){
+        res.json({
+            result: 'failed',
+            message: ''
+        })
+    }else if(receiverId){
         makeFriend();
     }else{
         res.json({
             result: 'failed',
-            messages: '对方不存在',
+            message: '对方不存在',
         })
     }
 })

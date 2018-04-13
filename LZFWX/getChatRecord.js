@@ -20,6 +20,13 @@ var mdb = require('../lib/method-MDB');
 // }
 router.get('/',logined,function(req,res){
     var { userId } = req.query;
+    if(!userId){
+        res.json({
+            result: 'failed',
+            message: '无'
+        })
+        return;
+    }
 
     mdb.sel({
         connect: 'WeChat',
@@ -34,6 +41,7 @@ router.get('/',logined,function(req,res){
                     receiver: {
                         userId: userId
                     },
+                    senderLook: true
                 },
                 {
                     messageType: 1,
@@ -43,7 +51,7 @@ router.get('/',logined,function(req,res){
                     receiver: {
                         userId: req.session.user.userId
                     },
-                    
+                    receiverLook: true
                 }
             ]
         },
@@ -51,7 +59,7 @@ router.get('/',logined,function(req,res){
             console.log(result);
             res.json({
                 result: 'success',
-                messages: result
+                message: result
             });
         }
     })

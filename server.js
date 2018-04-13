@@ -3,6 +3,7 @@ var ejs = require('ejs');
 var session = require('express-session');
 var ms = require('connect-mongo')(session);
 var flash = require('connect-flash');
+var cors = require('cors');
 
 var routes = require('./LZFWX/index');
 
@@ -12,6 +13,10 @@ var app = express();
 app.listen(process.env.PORT||8000,function(){
     console.log('server start');
 });
+
+
+// 跨域
+app.use(cors())
 
 /* 静态资源 */
 app.use(express.static('public'));

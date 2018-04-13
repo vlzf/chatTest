@@ -7,41 +7,108 @@ var mdb = require('../lib/method-MDB');
 //请求体
 // 无
 router.get('/',logined,function(req,res){
-    var updMessageCode = ()=>{
-        mdb.upd({
-            connect: 'WeChat',
-            site: 'messages',
-            sel: {
-                receiver: req.session.user.id,
-                receiverLook: 0
+    mdb.chain({
+        chain: [
+            {
+                connect: 'WeCaht',
+                site: 'messages',
+                type: 'sel',
+                sel: {
+                    $or: [
+                        {
+                            messageType: 1
+                        },
+                        {
+                            messageType: 2
+                        },
+                        {
+                            messageType: 3
+                        }
+                    ],
+                    $or: [
+                        {
+                            receiver: {
+                                userId: req.session.user.userId
+                            },
+                            receiverLook: false
+                        },
+                        {
+                            sender: {
+                                userId: req.session.user.userId
+                            },
+                            senderLook: false
+                        }
+                    ],
+                },
+                next(r,a,i){
+                    res.json({
+                        result: 'success',
+                        message: r,
+                    });
+                    if(r.length===0){
+                        return [];
+                    }
+                },
             },
-            upd: {
-                $set: {
-                    receiverLook: true
+
+            {
+                connect: 'WeCaht',
+                site: 'messages',
+                type: 'upd',
+                sel: {
+                    $or: [
+                        {
+                            messageType: 1
+                        },
+                        {
+                            messageType: 2
+                        },
+                        {
+                            messageType: 3
+                        },
+                        
+                    ],
+                    receiver: {
+                        userId: req.session.user.userId
+                    },
+                    receiverLook: false
+                },
+                upd: {
+                    $set: {
+                        receiverLook: true
+                    }
                 }
             },
-            callback: (result)=>{
-                console.log('已读标记完成');
+            {
+                connect: 'WeCaht',
+                site: 'messages',
+                type: 'upd',
+                sel: {
+                    $or: [
+                        {
+                            messageType: 1
+                        },
+                        {
+                            messageType: 2
+                        },
+                        {
+                            messageType: 3
+                        },
+                        
+                    ],
+                    sender: {
+                        userId: req.session.user.userId
+                    },
+                    senderLook: false
+                },
+                upd: {
+                    $set: {
+                        senderLook: true
+                    }
+                }
             }
-        });
-    }
-
-    mdb.sel({
-        connect: 'WeChat',
-        site: 'messages',
-        sel: {
-            receiver: req.session.user.id,
-            receiverLook: false
-        },
-        callback: (result)=>{
-            console.log(result);
-            res.json({
-                result: 'success',
-                messages: result
-            });
-            updMessageCode();
-        }
-    });
+        ]
+    })
 });
 
 module.exports = router;

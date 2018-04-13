@@ -33,7 +33,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
     }else {
         res.json({
             result: 'failed',
-            messages: '不存在'
+            message: '不存在'
         });
     }
 
@@ -53,7 +53,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                         if(!r.length){
                             res.json({
                                 result: 'failed',
-                                messages: '申请以失效',
+                                message: '申请以失效',
                             });
                             return [];
                         }
@@ -86,12 +86,11 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                         if(!agree){//不同意
                             res.json({
                                 result: 'success',
-                                messages: '已拒绝'
+                                message: '已拒绝'
                             });
                             return [];
-                        }else{//同意
-                            return;
                         }
+                        // 同意
                     }
                 },
                 
@@ -120,7 +119,7 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                         $push: {
                             friends: null
                         } 
-                    }
+                    },
                 },
 
                 {  // 4
@@ -147,8 +146,31 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
                         receiver: {},          // 由第 0 个决定
                         content: '通过验证',               // 内容
 
-                        receiverLook: false | true,  // 是否已被接收
-                        senderLook: false | true,  // 是否已被接收
+                        receiverLook: false,  // 是否已被接收
+                        senderLook: false,  // 是否已被接收
+                    },
+                    next(r,a,i){
+                        res.json({
+                            result: 'success',
+                            message: '已接受'
+                        })
+                    }
+                },
+
+                {// 6
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'upd',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    upd: {
+                        $inc: {
+                            messageCount: 1,
+                        }
+                    },
+                    next(r,a,i){
+                        console.log('ok')
                     }
                 }
             ]

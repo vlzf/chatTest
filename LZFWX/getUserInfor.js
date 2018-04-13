@@ -33,19 +33,26 @@ router.get('/',logined,function(req,res){
             id: req.session.user.userId
         },
         callback: (result)=>{
-            console.log(result);
-            res.json({
-                result: 'success',
-                messages: {
-                    address: result[0].address,//字符串
-                    mailbox: result[0].mailbox,//字符串，用户的email
-                    introduction: result[0].introduction,//字符串，用户设置的自我介绍
-                    nickName: result[0].nickName,//字符串，用户的昵称
-                    age: result[0].age,//字符，用户的年龄
-                    userPhoto: result[0].userPhoto,     // 头像
-                    sex: result[0].sex           // 性别
-                }
-            })
+            if(result.length){
+                console.log(result);
+                res.json({
+                    result: 'success',
+                    message: {
+                        address: result[0].address,//字符串
+                        mailbox: result[0].mailbox,//字符串，用户的email
+                        introduction: result[0].introduction,//字符串，用户设置的自我介绍
+                        nickName: result[0].nickName,//字符串，用户的昵称
+                        age: result[0].age,//字符，用户的年龄
+                        userPhoto: result[0].userPhoto,     // 头像
+                        sex: result[0].sex           // 性别
+                    }
+                })
+            }else{
+                res.json({
+                    result: 'failed',
+                    message: '无'
+                })
+            }
         }
     });
 });

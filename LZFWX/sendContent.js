@@ -30,81 +30,128 @@ router.post('/',logined,urlencodeParser,function(req,res){
         content=''
     } = req.body;
 
-    var sel = ()=>{
-        mdb.sel({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {
-                $or: [
-                    {
-                        userId: receiverId,
-                    },
-                    {
-                        userId: req.session.user.userId,
-                    }
-                ],
-            },
-            callback: (result = [])=>{
-                if(result.length !== 2) {
-                    res.json({
-                        result: 'failed',
-                        messages: '联系人不存在',
-                    });
-                    return;
-                }
-                var s, r, k = false;
-                result.forEach((e,i)=>{
-                    if(e.userId === req.session.user.userId) s = e;  // 发送者
-                    else if(e.userId === receiverId) r = e;          // 接收者
-                });
-                s.friends.forEach((e,i)=>{
-                    if(e === receiverId) k = true;  // 为好友关系
-                });
-                if(k) {
-                    return add(s,r); 
-                }else {
-                    res.json({
-                        result: 'failed',
-                        messages: '非好友关系'
-                    })
-                }
-            }
+    if(receiverId&&content){
+        send();
+    }else{
+        res.json({
+            result: 'failed',
+            message: '接受方或信息内容为空'
         })
     }
 
-    var add = (s,r)=>{
-        mdb.add({
-            connect: 'WeChat',
-            site: 'messages',
-            add: {
-                messageType: 1, // "0": 无效信息; "1": 普通消息; "2": 好友申请; "3": 更新好友列表消息
-                messageId: cR(s.userId),  // 信息 id
-                createTime: cT(), // 创建时间
-                sender: {
-                    userId: s.userId,          // 发送人id
-                    nickName: s.nickName,    // 发送人昵称
-                    userPhoto: s.userPhoto,       // 发送人头像
+
+    function send(){
+        mdb.chain({
+            chain: [
+                {
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'sel',
+                    sel: {
+                        $or: [
+                            {
+                                userId: receiverId,
+                            },
+                            {
+                                userId: req.session.user.userId
+                            }
+                        ]
+                    },
+                    next(r,a,i){
+                        if(r.length !== 2){
+                            res.json({
+                                result: 'failed',
+                                message: '联系人不存在',
+                            });
+                            return [];
+                        }
+                        var sr, rr, k = false;
+                        r.forEach((e,i)=>{
+                            if(e.userId === req.session.user.userId) sr = e;  // 发送者
+                            else if(e.userId === receiverId) rr = e;          // 接收者
+                        });
+                        for(let i = 0;i< sr.friends.length;i++){
+                            if(sr.friends[i] === receiverId) {
+                                k = true;     // 为好友关系
+                                break;
+                            }
+                        }
+                        if(k) {
+                            i += 2;
+                            a[i].add.sender = {
+                                userId: sr.userId,
+                                nickName: sr.nickName,    // 发送人昵称
+                                userPhoto: sr.userPhoto,       // 发送人头像 
+                            };
+                            a[i].add.receiver = {
+                                userId: rr.userId,        // 接收人id
+                                nickName: rr.nickName,  // 接收人昵称
+                                userPhoto: rr.userPhoto,     // 接收人头像
+                            }
+                            return;
+                        }else {
+                            res.json({
+                                result: 'failed',
+                                message: '非好友关系'
+                            });
+                            return [];
+                        }
+                    }
                 },
-                receiver: {
-                    userId: r.userId,        // 接收人id
-                    nickName: r.nickName,  // 接收人昵称
-                    userPhoto: r.userPhoto,     // 接收人头像
+
+                {
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'sel',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    next(r,a,i){
+                        a[i++].add.messageId = r[0].messageCount + 1;
+                        return;
+                    }
                 },
-                content: content,               // 内容
-            
-                receiverLook: false,  // 是否已被接收
-                senderLook: false,  // 是否已被接收
-            },
-            callback: (result)=>{
-                console.log(result);
-                res.json({
-                    result: 'success'
-                })
-            }
-        });
+
+                {
+                    connect: 'WeChat',
+                    site: 'messages',
+                    type: 'add',
+                    add: {
+                        messageType: 1, // "0": 无效信息; "1": 普通消息; "2": 好友申请; "3": 更新好友列表消息
+                        messageId: null,  // 信息 id
+                        createTime: cT(), // 创建时间
+                        sender: {},
+                        receiver: {},
+                        content: content,               // 内容
+                    
+                        receiverLook: false,  // 是否已被接收
+                        senderLook: false,  // 是否已被接收
+                    },
+                    next(r,a,i){
+                        res.json({
+                            result: 'success',
+                            message: '成功'
+                        });
+                        return;
+                    }
+                },
+
+                {
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'upd',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    upd: {
+                        $inc: {
+                            messageCount: 1
+                        }
+                    }
+                }
+            ]
+        })
     }
-    
-    sel();
 
 });
 
