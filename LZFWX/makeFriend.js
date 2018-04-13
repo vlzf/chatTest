@@ -1,3 +1,5 @@
+import { json } from './C:/Users/LZF/AppData/Local/Microsoft/TypeScript/2.6/node_modules/@types/express';
+
 var ifLogined = require('../lib/check-account').ifLogined;
 var urlencoded = require('body-parser').urlencoded;
 var mdb = require('../lib/method-MDB');
@@ -27,84 +29,130 @@ router.post('/', ifLogined, urlencodeParser, function(req,res){
     var {content, receiverId} = req.body;
 
 
-    var check = ()=>{
-        mdb.sel({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {
-                $or:[
-                    {
-                        userId: receiverId
+    function makeFriend(){
+        mdb.chain({
+            chain: [
+                {
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'sel',
+                    sel: {
+                        $or:[
+                            {
+                                userId: receiverId,
+                            },
+                            {
+                                userId: req.session.user.userId,
+                            }
+                        ]
                     },
-                    {
-                        userId: req.session.user.userId
-                    }
-                ]
-            },
-            callback: (result)=>{
-                console.log(result);
-                if(result.length === 2){
-                    var s, r;
-                    result.forEach((e,i)=>{
-                        if(e.userId === receiverId){
-                            r = e;
-                        }else if(e.userId === req.session.user.userId){
-                            s = e;
+                    next(r,a,i){
+                        if(r.length === 2){
+                            var rr, sr;
+                            if(r[0].userId === req.session.user.userId){
+                                sr = r[0];
+                                rr = r[1];
+                            }else{
+                                sr = r[1];
+                                rr = r[0];
+                            }
+                            for(let index = 0; index< sr.friends.length; index++){
+                                if(sr.friends[index] === rr.userId) {
+                                    res.json({
+                                        result: 'failed',
+                                        messages: '已存在',
+                                    });
+                                    return [];   // 清空操作链
+                                }
+                            }
+                            a[i+2].add.sender = {
+                                userId: sr.userId,          // 发送人id
+                                nickName: sr.nickName,    // 发送人昵称
+                                userPhoto: sr.userPhoto,       // 发送人头像
+                            };
+                            a[i+2].add.receiver = {
+                                userId: rr.userId,        // 接收人id
+                                nickName: rr.nickName,  // 接收人昵称
+                                userPhoto: rr.userPhoto,     // 接收人头像
+                            }
+                            return;    // 关系不存在，继续
+                        }else{
+                            res.json({
+                                result: 'failed',
+                                messages: '无'
+                            });
+                            return [];   // 清空操作链
                         }
-                    });
-                    if(s.friends.find((e,i)=>{
-                        return e === receiverId;
-                    })){
-                        return sendMessage(s,r);
-                    }else{
-                        res.json({
-                            result: 'failded',
-                            messages: '已存在',
-                        })
                     }
-                }else{
-                    res.json({
-                        result: 'failed',
-                        messages: '该联系人不存在',
-                    })
+                },
+
+                {
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'sel',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    next(r,a,i){
+                        if(r.length){
+                            a[i+1].add.messageId = r[0].messageCount+1;
+                        }else{
+                            res.json({
+                                result: 'failed',
+                                messages: '失败'
+                            })
+                            return [];
+                        }
+                    }
+                },
+
+                {
+                    connect: 'WeChat',
+                    site: 'messages',
+                    type: 'add',
+                    add: {
+                        messageType: 2,
+                        messageId: null,     // 由上一个决定
+                        createTime: cT(),
+                        sender: {},         // 由前两个决定
+                        receiver: {},      // 由前两个决定
+                        content: content,               // 内容
+                        receiverLook: false,  // 是否已被接收
+                        senderLook: false,  // 是否已被接收
+                    },
+                    next(r,a,i){
+                        res.json({
+                            result: 'success',
+                            messages: '成功'
+                        });
+                    }
+                },
+                
+                {
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'upd',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    upd: {
+                        $inc: {
+                            messageCount: 1,
+                        }
+                    }
                 }
-            }
+            ]
         })
-    };
+    }
 
-
-    var sendMessage = (sender,receiver)=>{
-        mdb.add({
-            connect: 'WeChat',
-            site: 'messages',
-            add: {
-                messageType: 2,
-                messageId: cR(sender.userId),
-                createTime: cT(),
-                sender: {
-                    userId: sender.userId,          // 发送人id
-                    nickName: sender.nickName,    // 发送人昵称
-                    userPhoto: sender.userPhoto,       // 发送人头像
-                },
-                receiver: {
-                    userId: receiver.userId,        // 接收人id
-                    nickName: receiver.nickName,  // 接收人昵称
-                    userPhoto: receiver.userPhoto,     // 接收人头像
-                },
-                content: content,               // 内容
-                receiverLook: false,  // 是否已被接收
-                senderLook: false,  // 是否已被接收
-            },
-            callback: (result)=>{
-                console.log(result);
-                res.json({
-                    result: 'success',
-                })
-            }
+    if(receiverId){
+        makeFriend();
+    }else{
+        res.json({
+            result: 'failed',
+            messages: '对方不存在',
         })
-    };
-
-    check();
+    }
 })
 
 

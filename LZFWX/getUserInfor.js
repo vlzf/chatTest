@@ -6,7 +6,7 @@ var mdb = require('../lib/method-MDB');
 //获取个人信息
 //请求体
 // {
-//     id:'asdasd2131'//字符串，用户的帐号，类似与QQ号
+//     无
 // }
 // 成功
 // {

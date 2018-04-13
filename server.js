@@ -27,7 +27,7 @@ app.use(session({
     resave: true,
     saveUninitiallized: false,
     cookie: {
-        maxAge: 3000000
+        maxAge: 36000
     },
     store: new ms({
         url: 'mongodb://localhost:27017/WeChat'

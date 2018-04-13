@@ -22,54 +22,61 @@ var cT = require('../lib/createTime').createCurrentTime;
 router.get('/',notLogined,function(req,res){
     var {account, password} = req.query;
 
-    var selInf = ()=>{
-        mdb.sel({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {
-                account: account,
-                password: password
-            },
-            callback: (result)=>{
-                console.log(result);
-                if(result.length==0){   // 找不到用户信息
-                    res.json({result:'failed',reason:"帐号或密码错误"});
-                }else if(result.length==1){  // 找到用户
-                    req.session.user = {
-                        account: result[0].account,
-                        userId: result[0].userId,
-                        password: result[0].password
+    function login(){
+        mdb.chain({
+            chain: [
+                {
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'sel',
+                    sel: {
+                        account: account,
+                        password: password
+                    },
+                    next(r,a,i){
+                        if(r.length === 1){  // 找到
+                            req.session.user = {
+                                account: r[0].account,
+                                userId: r[0].userId,
+                                password: r[0].password
+                            }
+                            return;
+                        }else{             // 找不到
+                            res.json({
+                                result: 'failed',
+                                reason: '账号或密码错误'
+                            });
+                            return []; // 清空操作链
+                        }
                     }
-                    res.json({result: 'success', userId: result[0].userId});
-                    updInf(result[0].userId);
-                }else{   // 出错
-                    res.json({result:'failed',reason:'服务器错误'});
+                },
+                {
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'upd',
+                    sel: {
+                        account: account,
+                        password: password
+                    },
+                    upd: {
+                        $set: {
+                            lastLoginTime: cT()
+                        }
+                    },
+                    next(r,a,i){
+                        console.log('登录时间更新成功');
+                    }
                 }
-            }
+            ]
         })
     }
 
-    var updInf = (userId)=>{
-        mdb.upd({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {
-                userId: userId
-            },
-            upd: {
-                $set: {
-                    lastLoginTime: cT()
-                }
-            },
-            callback: (result)=>{
-                console.log(result);
-            }
-        })
-    }
+
+   
 
     //验证
     if(account && password){
-        selInf();
+        login();
     }else{
         res.json({result:'failed',reason:'账号或密码未填写'});
     }

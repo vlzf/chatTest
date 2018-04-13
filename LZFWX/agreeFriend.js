@@ -27,140 +27,136 @@ var cT = require('../lib/createTime').createCurrentTime;
 router.post('/', ifLogined, urlencodeParser, function(req,res){
     var {messageId, agree} = req.body;
 
-    var check = ()=>{
-        mdb.sel({
-            connect: 'WeChat',
-            site: 'messages',
-            sel: {
-                messageType: 2,
-                messageId: messageId,
-            },
-            callback: (result)=>{
-                console.log(result);
-                if(result.length === 1){
-                    if(result[0].receiver.userId === req.session.user.userId){
-                        if(agree){
-                            return addFriend(result[0].sender.userId, result[0].receiver.userId);
-                        }
-                    }else{
-                        res.json({
-                            result: 'failed',
-                            messages: '非接收方',
-                        })
-                    }
-                }else{
-                    res.json({
-                        result: 'failed',
-                        messages: '申请已失效',
-                    });
-                }
-            }
-        })
-    };
 
-
-
-    var addFriend = (senderId,receiverId)=>{
-        mdb.sel({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {
-                $or: [
-                    {
-                        userId: receiverId,
-                    },
-                    {
-                        userId: senderId,
-                    }
-                ]
-            },
-            callback: (result)=>{
-                if(result.length === 2){
-                    var s, r;
-                    result.forEach((e,i)=>{
-                        if(e.userId === senderId){
-                            s = e;
-                        }else if(e.userId === receiverId){
-                            r = e;
-                        }
-                    });
-                    s.friends.push(receiverId);
-                    r.friends.push(senderId);
-                    return updFriend(s,r);
-                }
-            }
-        })
-    }
-
-
-    var updFriend = (s,r)=>{
-        mdb.upd({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {
-                userId: s.userId,
-            },
-            upd: {
-                $set:{
-                    friends: s.friends,
-                },
-            },
-            callback: ()=>{
-                return mdb.upd({
-                    connect: 'WeChat',
-                    site: 'users',
-                    sel: {
-                        userId: r.userId,
-                    },
-                    upd: {
-                        $set: {
-                            friends: r.friends,
-                        }
-                    },
-                    callback: ()=>{
-                        res.json({
-                            result: 'success',
-                            messages: '成功',
-                        });
-                        return systemMessage(s,r);
-                    }
-                })
-            }
-        })
-    }
-
-
-    var systemMessage = (s,r)=>{
-        mdb.add({
-            connect: 'WeChat',
-            site: 'messages',
-            add: {
-                messageType: 3, // "0": 无效信息; "1": 普通消息; "2": 好友申请; "3": 更新好友列表消息
-                messageId: cR('system'),  // 信息 id
-                createTime: cT(), // 创建时间
-                sender: {
-                    userId: s.userId,          // 发送人id
-                    nickName: '',    // 发送人昵称
-                    userPhoto: '',       // 发送人头像
-                },
-                receiver: {
-                    userId: r.userId,        // 接收人id
-                    nickName: '',  // 接收人昵称
-                    userPhoto: '',     // 接收人头像
-                },
-                content: '',               // 内容
-
-                receiverLook: false,  // 是否已被接收
-                senderLook: false,  // 是否已被接收
-            },
-            callback: ()=>{
-                console.log('system: ok');
-            }
+    if(messageId&&typeof agree == "boolean"){
+        agreeFriend();
+    }else {
+        res.json({
+            result: 'failed',
+            messages: '不存在'
         });
     }
 
+    function agreeFriend(){
+        var sr,rr;
+        mdb.chain({
+            chain: [
+                {    // 0
+                    connect: 'WeChat',
+                    site: 'messages',
+                    type: 'sel',
+                    sel: {
+                        messageId: messageId,
+                        messageType: 2
+                    },
+                    next(r,a,i){
+                        if(!r.length){
+                            res.json({
+                                result: 'failed',
+                                messages: '申请以失效',
+                            });
+                            return [];
+                        }
+                        sr = r[0].sender;
+                        rr = r[0].receiver;
+                        a[i+2].sel.userId = rr.userId;
+                        a[i+2].upd.$push.friends = sr.userId;
+                        a[i+3].sel.userId = sr.userId;
+                        a[i+3].upd.$push.friends = rr.userId;
 
-    check();
+                        a[i+5].add.receiver = rr;
+                        a[i+5].add.sender = sr;
+                    }
+                },
+
+                {   // 1
+                    connect: 'WeChat',
+                    site: 'messages',
+                    type: 'upd',
+                    sel: {
+                        messageId: messageId,
+                        messageType: 2,
+                    },
+                    upd: {
+                        $set: {
+                            messageType: 0,
+                        }
+                    },
+                    next(r,a,i){
+                        if(!agree){//不同意
+                            res.json({
+                                result: 'success',
+                                messages: '已拒绝'
+                            });
+                            return [];
+                        }else{//同意
+                            return;
+                        }
+                    }
+                },
+                
+                {   // 2
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'upd',
+                    sel: {
+                        userId: null
+                    },
+                    upd: {
+                        $push: {
+                            friends: null
+                        } 
+                    }
+                },
+
+                {   // 3
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'upd',
+                    sel: {
+                        userId: null
+                    },
+                    upd: {
+                        $push: {
+                            friends: null
+                        } 
+                    }
+                },
+
+                {  // 4
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'sel',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    next(r,a,i){
+                        a[i+1].add.messageId = r[0].messageCount+1;
+                    }
+                },
+
+                {// 5
+                    connect: 'WeChat',
+                    site: 'messages',
+                    type: 'add',
+                    add: {
+                        messageType: 3, // "0": 无效信息; "1": 普通消息; "2": 好友申请; "3": 更新好友列表消息
+                        messageId: null,  // 信息 id  由上一个决定
+                        createTime: cT(), // 创建时间
+                        sender: {},            // 由第 0 个决定
+                        receiver: {},          // 由第 0 个决定
+                        content: '通过验证',               // 内容
+
+                        receiverLook: false | true,  // 是否已被接收
+                        senderLook: false | true,  // 是否已被接收
+                    }
+                }
+            ]
+        })
+    }
+
+    
+
 });
 
 module.exports = router;

@@ -29,57 +29,90 @@ router.post('/',urlencodeParser,function(req,res){
         password=''
     } = req.body;
 
-    var userCount = 0;
 
-    var selInf = ()=>{     // 检查用户是否存在
-        mdb.sel({
-            connect: 'WeChat',
-            site: 'users',
-            sel: {},
-            callback: (result)=>{
-                console.log(result);
+    function chain(){
+        var userCount;
+        mdb.chain({
+            chain: [
+                {
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'sel',
+                    sel: {
+                        account: account
+                    },
+                    next(result,array,i){
+                        console.log(result);
 
-                userCount = result.length;      // 记录用户数量
-
-                if(!result.find((e,i)=>{
-                    return e.account === account;
-                })){    //不存在，则注册
-                    return addInf();
-                }else{       //存在，注册失败
-                    result = null;
-                    res.json({result:'failed',reason:'用户已存在'});
+                        if(!result.find((e,i)=>{
+                            return e.account === account;
+                        })){    //不存在，则注册
+                            return;
+                        }else{       //存在，注册失败
+                            res.json({result:'failed',reason:'用户已存在'});
+                            return [];  // 清空操作链
+                        }
+                    }
+                },
+                {
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'sel',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    next(r,a,i){
+                        ({userCount}=r[0]);
+                        a[i+1].add.userId = ++userCount;
+                        a[i+2].upd.$set.userCount = userCount;
+                        return;
+                    },
+                },
+                {
+                    connect: 'WeChat',
+                    site: 'users',
+                    type: 'add',
+                    add: {
+                        userId: null,          // 由上一个决定
+                        account: account,
+                        password: password,
+                        nickname: '',          //字符串，用户的昵称
+                        age : '',                 //整型，用户的年龄
+                        sex: 1,              // 性别
+                        address : '',             //字符串，表示地址
+                        introduction : '',        //字符串，用户的自我介绍
+                        mailbox: '',              //字符串，用户的email  
+                        friends: [],            //好友
+                        createTime : cT(),          //创建时间
+                        lastLoginTime: ""         //最近一次登录时间
+                    },
+                    next(result){
+                        console.log(result);
+                        res.json({result:'success',account: result.ops[0].account});    // 成功，则返回 account
+                    }
+                },
+                {
+                    connect: 'WeChat',
+                    site: 'count',
+                    type: 'upd',
+                    sel: {
+                        countName: 'WeChat',
+                    },
+                    upd: {
+                        $inc: {
+                            userCount: 1,
+                        }
+                    },
+                    next(r,a,i){
+                        console.log(r);
+                    }
                 }
-            }
+            ]
         })
     }
 
-    var addInf = ()=>{         // 添加用户账号
-        mdb.add({
-            connect: 'WeChat',
-            site: 'users',
-            add: {
-                userId: userCount+1+'',
-                account: account,
-                password: password,
-                nickname: '',          //字符串，用户的昵称
-                age : '',                 //整型，用户的年龄
-                sex: 1,              // 性别
-                address : '',             //字符串，表示地址
-                introduction : '',        //字符串，用户的自我介绍
-                mailbox: '',              //字符串，用户的email  
-                friends: [],            //好友
-                createTime : cT(),          //创建时间
-                lastLoginTime: ""         //最近一次登录时间
-            },
-            callback: (result)=>{
-                console.log(result);
-                res.json({result:'success',account: result.ops[0].account});    // 成功，则返回 account
-            }
-        });
-    }
-
     if(account&&password){   // 判断是否符合 注册要求
-        selInf();
+        chain();
     }else{
         res.json({result:'failed',reason:'帐号或密码未输入'});
     }

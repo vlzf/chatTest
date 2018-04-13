@@ -43,12 +43,14 @@ router.post('/',ifLogined,urlencodeParser,function(req,res){
             userId: req.session.user.userId
         },
         upd: {
-            nickName: nickName,          //字符串，用户的昵称
-            age : age,                 //整型，用户的年龄
-            address : address,             //字符串，表示地址
-            introduction : introduction,        //字符串，用户的自我介绍
-            mailbox : mailbox,              //字符串，用户的email 
-            sex: sex                    // 性别
+            $set:{
+                nickName: nickName,          //字符串，用户的昵称
+                age : age,                 //整型，用户的年龄
+                address : address,             //字符串，表示地址
+                introduction : introduction,        //字符串，用户的自我介绍
+                mailbox : mailbox,              //字符串，用户的email 
+                sex: sex                    // 性别
+            }
         },
         callback: (result)=>{
             console.log(result);
