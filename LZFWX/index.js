@@ -12,6 +12,7 @@ module.exports = function(app){
     app.use('/LZFWX/findFriends', require('./findFriends'));
     app.use('/LZFWX/makeFriend', require('./makeFriend'));
     app.use('/LZFWX/agreeFriend', require('./agreeFriend'));
+    app.use('/LZFWX/uploadHeadPhoto', require('./uploadHeadPhoto'));
 
     app.use(function(req,res){
         res.status(404);

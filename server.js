@@ -4,6 +4,8 @@ var session = require('express-session');
 var ms = require('connect-mongo')(session);
 var flash = require('connect-flash');
 var cors = require('cors');
+var multer = require('multer');
+
 
 var routes = require('./LZFWX/index');
 
@@ -13,6 +15,11 @@ var app = express();
 app.listen(process.env.PORT||8000,function(){
     console.log('server start');
 });
+
+
+// 图片处理
+app.use(multer({ dest: './public/userData/IMG'}).array('file'));  // 文件参数名为 "file"
+
 
 
 // 跨域

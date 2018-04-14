@@ -120,9 +120,9 @@
 
 ## 5. 更换头像
 - method：POST
-- url：/LZFWX/
+- url：/LZFWX/uploadPhoto
 - param：  
-  - type
+  - file
 - return：
 ``` json
 // 成功
